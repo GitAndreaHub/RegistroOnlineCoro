@@ -136,18 +136,27 @@
             const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null }));
 
             useEffect(() => {
+                // Verifica se ci sono studenti registrati per la data selezionata
                 if (!dailyAttendance[selectedDate]) {
-                    const newDayAttendance = students.map(student => ({ name: student.name, present: null }));
+                    const updatedAttendance = students.map(student => ({
+                        name: student.name,
+                        present: null
+                    }));
+            
                     setDailyAttendance(prev => ({
                         ...prev,
-                        [selectedDate]: newDayAttendance
+                        [selectedDate]: updatedAttendance
                     }));
-                    // Salva la nuova giornata su Firebase
+            
+                    // Salva nel database Firestore per la data selezionata
                     setDoc(doc(db, "attendance", selectedDate), {
-                        students: newDayAttendance
+                        students: updatedAttendance
+                    }).catch((error) => {
+                        console.error("Errore durante il salvataggio delle presenze:", error);
                     });
                 }
             }, [selectedDate, students]);
+
 
 
             const calculateTotalStats = () => {
