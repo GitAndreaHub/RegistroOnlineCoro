@@ -27,12 +27,15 @@
 <body>
     <div id="root"></div>
 
-    <!-- Carica una versione compatibile di Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+     <!-- Script di React e ReactDOM -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <!-- Script di Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
+
 
     <script type="text/babel">
         // Configurazione di Firebase
@@ -183,6 +186,31 @@
             }, [selectedDate, students]);
 
 
+
+            const updateAttendance = (studentName) => {
+                // Aggiorna lo stato locale delle presenze
+                setDailyAttendance((prev) => {
+                    const updatedAttendance = {
+                        ...prev,
+                        [selectedDate]: prev[selectedDate].map((student) =>
+                            student.name === studentName
+                                ? { ...student, present: !student.present }
+                                : student
+                        ),
+                    };
+            
+                    // Salva l'aggiornamento su Firestore
+                    setDoc(doc(db, "attendance", selectedDate), {
+                        students: updatedAttendance[selectedDate]
+                    }).catch((error) => {
+                        console.error("Errore durante l'aggiornamento delle presenze:", error);
+                    });
+            
+                    return updatedAttendance;
+                });
+            };
+
+            
 
             const calculateTotalStats = () => {
                 const stats = {};
