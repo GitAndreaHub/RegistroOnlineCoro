@@ -27,9 +27,9 @@
 <body>
     <div id="root"></div>
 
-    <!-- Includi le librerie di Firebase come script esterni -->
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
+    <!-- Carica una versione compatibile di Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -64,13 +64,13 @@
             }, []);
 
             const fetchStudents = async () => {
-                const querySnapshot = await firebase.firestore().collection("students").get();
+                const querySnapshot = await db.collection("students").get();
                 const studentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setStudents(studentsList);
             };
 
             const fetchDailyAttendance = async () => {
-                const querySnapshot = await firebase.firestore().collection("attendance").get();
+                const querySnapshot = await db.collection("attendance").get();
                 const attendanceData = {};
                 querySnapshot.docs.forEach(doc => {
                     attendanceData[doc.id] = doc.data().students || [];
@@ -82,7 +82,7 @@
                 const trimmedStudent = newStudent.trim();
                 if (trimmedStudent && !students.some(s => s.name === trimmedStudent)) {
                     try {
-                        const docRef = await firebase.firestore().collection("students").add({
+                        const docRef = await db.collection("students").add({
                             name: trimmedStudent
                         });
                         setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
@@ -97,7 +97,7 @@
                 const confirmed = window.confirm(`Sei sicuro di voler rimuovere ${studentName}?`);
                 if (confirmed) {
                     try {
-                        await firebase.firestore().collection("students").doc(studentId).delete();
+                        await db.collection("students").doc(studentId).delete();
                         setStudents(prev => prev.filter(student => student.id !== studentId));
                         setDailyAttendance(prev => {
                             const updatedAttendance = { ...prev };
@@ -138,8 +138,7 @@
                         ...prev,
                         [selectedDate]: newDayAttendance
                     }));
-                    // Salva la nuova giornata su Firebase
-                    firebase.firestore().collection("attendance").doc(selectedDate).set({
+                    db.collection("attendance").doc(selectedDate).set({
                         students: newDayAttendance
                     });
                 }
