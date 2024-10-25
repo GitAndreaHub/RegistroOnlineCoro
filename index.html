@@ -39,12 +39,12 @@
     <script type="text/babel">
         // Configurazione di Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
-            authDomain: "registro-giococoro.firebaseapp.com",
-            projectId: "registro-giococoro",
-            storageBucket: "registro-giococoro.appspot.com",
-            messagingSenderId: "816758508935",
-            appId: "1:816758508935:web:81f9c5de9f2cafb5f31722"
+          apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
+          authDomain: "registro-giococoro.firebaseapp.com",
+          projectId: "registro-giococoro",
+          storageBucket: "registro-giococoro.appspot.com",
+          messagingSenderId: "816758508935",
+          appId: "1:816758508935:web:81f9c5de9f2cafb5f31722"
         };
 
         // Inizializza Firebase
@@ -88,18 +88,6 @@
                             name: trimmedStudent
                         });
                         setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
-
-                        // Aggiorna le presenze per tutte le date esistenti
-                        setDailyAttendance(prev => {
-                            const updatedAttendance = { ...prev };
-                            Object.keys(updatedAttendance).forEach(date => {
-                                if (!updatedAttendance[date].some(s => s.name === trimmedStudent)) {
-                                    updatedAttendance[date].push({ name: trimmedStudent, present: null });
-                                }
-                            });
-                            return updatedAttendance;
-                        });
-
                         setNewStudent('');
                     } catch (e) {
                         console.error("Errore durante l'aggiunta dello studente: ", e);
@@ -108,24 +96,17 @@
             };
 
             const toggleAttendance = (studentName) => {
-                setDailyAttendance(prev => {
-                    const updatedAttendance = {
-                        ...prev,
-                        [selectedDate]: prev[selectedDate].map(student =>
-                            student.name === studentName
-                                ? { ...student, present: student.present === null ? true : !student.present }
-                                : student
-                        )
-                    };
-
-                    // Salva le presenze aggiornate nel database
-                    db.collection("attendance").doc(selectedDate).set({
-                        students: updatedAttendance[selectedDate]
-                    }).catch((error) => {
-                        console.error("Errore durante l'aggiornamento delle presenze:", error);
-                    });
-
-                    return updatedAttendance;
+                const updatedAttendance = {
+                    ...dailyAttendance,
+                    [selectedDate]: (dailyAttendance[selectedDate] || []).map(student =>
+                        student.name === studentName
+                            ? { ...student, present: !student.present }
+                            : student
+                    )
+                };
+                setDailyAttendance(updatedAttendance);
+                db.collection("attendance").doc(selectedDate).set({
+                    students: updatedAttendance[selectedDate]
                 });
             };
 
@@ -144,113 +125,44 @@
                         ...prev,
                         [selectedDate]: newDayAttendance
                     }));
-
-                    // Salva la nuova giornata su Firebase
                     db.collection("attendance").doc(selectedDate).set({
                         students: newDayAttendance
-                    }).catch((error) => {
-                        console.error("Errore durante il salvataggio delle presenze:", error);
                     });
                 }
             }, [selectedDate, students]);
+
+            const totalStats = students.reduce((acc, student) => {
+                acc[student.name] = {
+                    present: dailyAttendance[selectedDate]?.filter(s => s.name === student.name && s.present === true).length || 0,
+                    absent: dailyAttendance[selectedDate]?.filter(s => s.name === student.name && s.present === false).length || 0
+                };
+                return acc;
+            }, {});
 
             return (
                 <div className="max-w-md mx-auto p-4">
                     <h1 className="text-2xl font-bold mb-4 text-center">Registro GiocoCoro</h1>
 
-                    <div className="mb-6">
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="w-full p-2 border rounded"
-                        />
-                    </div>
+                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="mb-4 w-full" />
 
-                    <div className="flex gap-2 mb-6">
-                        <input
-                            type="text"
-                            placeholder="Nome nuovo studente"
-                            value={newStudent}
-                            onChange={(e) => setNewStudent(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddStudent()}
-                            className="flex-1 p-2 border rounded"
-                        />
-                        <button
-                            onClick={handleAddStudent}
-                            className="px-4 py-2 text-white rounded"
-                            style={{ backgroundColor: '#E6007E' }}
-                        >
-                            Aggiungi
-                        </button>
-                    </div>
+                    <input
+                        type="text"
+                        value={newStudent}
+                        onChange={(e) => setNewStudent(e.target.value)}
+                        placeholder="Aggiungi uno studente"
+                        className="w-full mb-4"
+                    />
 
-                    <div className="bg-white rounded-lg shadow mb-6">
-                        {currentDayAttendance.map((student, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 border-b">
-                                <span>{student.name}</span>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => toggleAttendance(student.name)}
-                                        className={`px-3 py-1 rounded ${
-                                            student.present === true 
-                                                ? 'bg-green-600 text-white' 
-                                                : student.present === false 
-                                                    ? 'bg-red-600 text-white' 
-                                                    : 'bg-gray-200'
-                                        }`}
-                                    >
-                                        {getAttendanceStatus(student.present)}
-                                    </button>
-                                    <button
-                                        onClick={() => removeStudentFromRegister(student.id, student.name)}
-                                        className="px-2 text-red-600"
-                                    >
-                                        Rimuovi
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <button onClick={handleAddStudent}>Aggiungi Studente</button>
 
-                    <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                        <p>Presenti oggi: {currentDayAttendance.filter(s => s.present === true).length}</p>
-                        <p>Assenti oggi: {currentDayAttendance.filter(s => s.present === false).length}</p>
-                        <p>Totale iscritti: {currentDayAttendance.length}</p>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow">
-                        <button
-                            className="w-full p-4 text-left font-semibold flex justify-between items-center"
-                            onClick={() => setShowStats(!showStats)}
-                        >
-                            <span>Statistiche Totali</span>
-                            <span>{showStats ? "▼" : "▶"}</span>
-                        </button>
-                        
-                        {showStats && (
-                            <div className="p-4">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr>
-                                            <th className="text-left p-2">Nome</th>
-                                            <th className="text-center p-2">Presenze</th>
-                                            <th className="text-center p-2">Assenze</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {Object.entries(totalStats).map(([name, data], index) => (
-                                            <tr key={index} className="border-t">
-                                                <td className="p-2">{name}</td>
-                                                <td className="text-center p-2">{data.present}</td>
-                                                <td className="text-center p-2">{data.absent}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+                    {currentDayAttendance.map((student) => (
+                        <div key={student.name}>
+                            <span>{student.name}</span>
+                            <button onClick={() => toggleAttendance(student.name)}>
+                                {getAttendanceStatus(student.present)}
+                            </button>
+                        </div>
+                    ))}
                 </div>
             );
         };
@@ -259,4 +171,3 @@
     </script>
 </body>
 </html>
-
