@@ -142,11 +142,13 @@
                         ...prev,
                         [selectedDate]: newDayAttendance
                     }));
-                    db.collection("attendance").doc(selectedDate).set({
+                    // Salva la nuova giornata su Firebase
+                    setDoc(doc(db, "attendance", selectedDate), {
                         students: newDayAttendance
                     });
                 }
             }, [selectedDate, students]);
+
 
             const calculateTotalStats = () => {
                 const stats = {};
