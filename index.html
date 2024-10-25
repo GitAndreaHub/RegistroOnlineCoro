@@ -86,16 +86,29 @@
                 const trimmedStudent = newStudent.trim();
                 if (trimmedStudent && !students.some(s => s.name === trimmedStudent)) {
                     try {
-                        const docRef = await db.collection("students").add({
+                        const docRef = await addDoc(collection(db, "students"), {
                             name: trimmedStudent
                         });
                         setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
+            
+                        // Aggiorna le presenze per tutte le date esistenti
+                        setDailyAttendance(prev => {
+                            const updatedAttendance = { ...prev };
+                            Object.keys(updatedAttendance).forEach(date => {
+                                if (!updatedAttendance[date].some(s => s.name === trimmedStudent)) {
+                                    updatedAttendance[date].push({ name: trimmedStudent, present: null });
+                                }
+                            });
+                            return updatedAttendance;
+                        });
+            
                         setNewStudent('');
                     } catch (e) {
                         console.error("Errore durante l'aggiunta dello studente: ", e);
                     }
                 }
             };
+
 
             const removeStudentFromRegister = async (studentId, studentName) => {
                 const confirmed = window.confirm(`Sei sicuro di voler rimuovere ${studentName}?`);
@@ -117,15 +130,27 @@
             };
 
             const toggleAttendance = (studentName) => {
-                setDailyAttendance(prev => ({
-                    ...prev,
-                    [selectedDate]: prev[selectedDate]?.map(student => 
-                        student.name === studentName 
-                            ? { ...student, present: student.present === null ? true : student.present === true ? false : null }
-                            : student
-                    )
-                }));
+                setDailyAttendance(prev => {
+                    const updatedAttendance = {
+                        ...prev,
+                        [selectedDate]: prev[selectedDate].map(student =>
+                            student.name === studentName
+                                ? { ...student, present: student.present === null ? true : student.present === true ? false : null }
+                                : student
+                        )
+                    };
+            
+                    // Salva le presenze aggiornate nel database
+                    setDoc(doc(db, "attendance", selectedDate), {
+                        students: updatedAttendance[selectedDate]
+                    }).catch((error) => {
+                        console.error("Errore durante l'aggiornamento delle presenze:", error);
+                    });
+            
+                    return updatedAttendance;
+                });
             };
+
 
             const getAttendanceStatus = (status) => {
                 if (status === true) return "Presente";
