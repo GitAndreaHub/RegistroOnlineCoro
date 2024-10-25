@@ -266,15 +266,16 @@
     </script>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(registration => {
-                    console.log('ServiceWorker registrato');
-                }).catch(err => {
-                    console.log('ServiceWorker errore: ', err);
-                });
-            });
-        }
+        // Temporaneamente commentato per test
+        // if ('serviceWorker' in navigator) {
+        //     window.addEventListener('load', () => {
+        //         navigator.serviceWorker.register('./sw.js').then(registration => {
+        //             console.log('ServiceWorker registrato');
+        //         }).catch(err => {
+        //             console.log('ServiceWorker errore: ', err);
+        //         });
+        //     });
+        // }
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
