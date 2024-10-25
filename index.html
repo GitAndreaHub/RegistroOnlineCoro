@@ -37,14 +37,14 @@
     <script type="text/babel">
         // La configurazione di Firebase copiata dalla tua console di Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
-            authDomain: "registro-giococoro.firebaseapp.com",
-            projectId: "registro-giococoro",
-            storageBucket: "registro-giococoro.appspot.com",
-            messagingSenderId: "816758508935",
-            appId: "1:816758508935:web:81f9c5de9f2cafb5f31722"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
-    
+
         // Inizializza Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -64,13 +64,13 @@
             }, []);
 
             const fetchStudents = async () => {
-                const querySnapshot = await getDocs(collection(db, "students"));
+                const querySnapshot = await firebase.firestore().collection("students").get();
                 const studentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setStudents(studentsList);
             };
 
             const fetchDailyAttendance = async () => {
-                const querySnapshot = await getDocs(collection(db, "attendance"));
+                const querySnapshot = await firebase.firestore().collection("attendance").get();
                 const attendanceData = {};
                 querySnapshot.docs.forEach(doc => {
                     attendanceData[doc.id] = doc.data().students || [];
@@ -82,7 +82,7 @@
                 const trimmedStudent = newStudent.trim();
                 if (trimmedStudent && !students.some(s => s.name === trimmedStudent)) {
                     try {
-                        const docRef = await addDoc(collection(db, "students"), {
+                        const docRef = await firebase.firestore().collection("students").add({
                             name: trimmedStudent
                         });
                         setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
@@ -97,7 +97,7 @@
                 const confirmed = window.confirm(`Sei sicuro di voler rimuovere ${studentName}?`);
                 if (confirmed) {
                     try {
-                        await deleteDoc(doc(db, "students", studentId));
+                        await firebase.firestore().collection("students").doc(studentId).delete();
                         setStudents(prev => prev.filter(student => student.id !== studentId));
                         setDailyAttendance(prev => {
                             const updatedAttendance = { ...prev };
@@ -139,7 +139,7 @@
                         [selectedDate]: newDayAttendance
                     }));
                     // Salva la nuova giornata su Firebase
-                    setDoc(doc(db, "attendance", selectedDate), {
+                    firebase.firestore().collection("attendance").doc(selectedDate).set({
                         students: newDayAttendance
                     });
                 }
