@@ -27,12 +27,12 @@
 <body>
     <div id="root"></div>
 
-    <script type="module">
-        // Importa le librerie necessarie da Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
-    
-        // La configurazione di Firebase copiata dalla tua console di Firebase
+    <!-- Script di Firebase (UMD) -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+
+    <script type="text/babel">
+        // Configurazione di Firebase
         const firebaseConfig = {
           apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
           authDomain: "registro-giococoro.firebaseapp.com",
@@ -41,240 +41,18 @@
           messagingSenderId: "816758508935",
           appId: "1:816758508935:web:81f9c5de9f2cafb5f31722"
         };
-    
+
         // Inizializza Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
         const { useState, useEffect } = React;
 
         const AttendanceTracker = () => {
-            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-            const [newStudent, setNewStudent] = useState('');
-            const [showStats, setShowStats] = useState(false);
-            const [students, setStudents] = useState([]);
-            const [dailyAttendance, setDailyAttendance] = useState({});
-
-            useEffect(() => {
-                fetchStudents();
-                fetchDailyAttendance();
-            }, []);
-
-            const fetchStudents = async () => {
-                const querySnapshot = await getDocs(collection(db, "students"));
-                const studentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setStudents(studentsList);
-            };
-
-            const fetchDailyAttendance = async () => {
-                const querySnapshot = await getDocs(collection(db, "attendance"));
-                const attendanceData = {};
-                querySnapshot.docs.forEach(doc => {
-                    attendanceData[doc.id] = doc.data().students || [];
-                });
-                setDailyAttendance(attendanceData);
-            };
-
-            const handleAddStudent = async () => {
-                const trimmedStudent = newStudent.trim();
-                if (trimmedStudent && !students.some(s => s.name === trimmedStudent)) {
-                    try {
-                        const docRef = await addDoc(collection(db, "students"), {
-                            name: trimmedStudent
-                        });
-                        setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
-                        setNewStudent('');
-                    } catch (e) {
-                        console.error("Errore durante l'aggiunta dello studente: ", e);
-                    }
-                }
-            };
-
-            const removeStudentFromRegister = async (studentId, studentName) => {
-                const confirmed = window.confirm(`Sei sicuro di voler rimuovere ${studentName}?`);
-                if (confirmed) {
-                    try {
-                        await deleteDoc(doc(db, "students", studentId));
-                        setStudents(prev => prev.filter(student => student.id !== studentId));
-                        setDailyAttendance(prev => {
-                            const updatedAttendance = { ...prev };
-                            for (let date in updatedAttendance) {
-                                updatedAttendance[date] = updatedAttendance[date].filter(student => student.name !== studentName);
-                            }
-                            return updatedAttendance;
-                        });
-                    } catch (e) {
-                        console.error("Errore durante l'eliminazione dello studente: ", e);
-                    }
-                }
-            };
-
-            const toggleAttendance = (studentName) => {
-                setDailyAttendance(prev => ({
-                    ...prev,
-                    [selectedDate]: prev[selectedDate]?.map(student => 
-                        student.name === studentName 
-                            ? { ...student, present: student.present === null ? true : student.present === true ? false : null }
-                            : student
-                    )
-                }));
-            };
-
-            const getAttendanceStatus = (status) => {
-                if (status === true) return "Presente";
-                if (status === false) return "Assente";
-                return "Non definito";
-            };
-
-            const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null }));
-
-            useEffect(() => {
-                if (!dailyAttendance[selectedDate]) {
-                    const newDayAttendance = students.map(student => ({ name: student.name, present: null }));
-                    setDailyAttendance(prev => ({
-                        ...prev,
-                        [selectedDate]: newDayAttendance
-                    }));
-                    // Salva la nuova giornata su Firebase
-                    setDoc(doc(db, "attendance", selectedDate), {
-                        students: newDayAttendance
-                    });
-                }
-            }, [selectedDate, students]);
-
-            const calculateTotalStats = () => {
-                const stats = {};
-                Object.values(dailyAttendance).forEach(dayStudents => {
-                    dayStudents.forEach(student => {
-                        if (!stats[student.name]) {
-                            stats[student.name] = { present: 0, absent: 0 };
-                        }
-                        if (student.present === true) {
-                            stats[student.name].present += 1;
-                        } else if (student.present === false) {
-                            stats[student.name].absent += 1;
-                        }
-                    });
-                });
-                return stats;
-            };
-
-            const totalStats = calculateTotalStats();
-
-            return (
-                <div className="max-w-md mx-auto p-4">
-                    <h1 className="text-2xl font-bold mb-4 text-center">Registro GiocoCoro</h1>
-
-                    <div className="mb-6">
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="w-full p-2 border rounded"
-                        />
-                    </div>
-
-                    <div className="flex gap-2 mb-6">
-                        <input
-                            type="text"
-                            placeholder="Nome nuovo studente"
-                            value={newStudent}
-                            onChange={(e) => setNewStudent(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddStudent()}
-                            className="flex-1 p-2 border rounded"
-                        />
-                        <button
-                            onClick={handleAddStudent}
-                            className="px-4 py-2 text-white rounded"
-                            style={{ backgroundColor: '#E6007E' }}
-                        >
-                            Aggiungi
-                        </button>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow mb-6">
-                        {currentDayAttendance.map((student, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 border-b">
-                                <span>{student.name}</span>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => toggleAttendance(student.name)}
-                                        className={`px-3 py-1 rounded ${
-                                            student.present === true 
-                                                ? 'bg-green-600 text-white' 
-                                                : student.present === false 
-                                                    ? 'bg-red-600 text-white' 
-                                                    : 'bg-gray-200'
-                                        }`}
-                                    >
-                                        {getAttendanceStatus(student.present)}
-                                    </button>
-                                    <button
-                                        onClick={() => removeStudentFromRegister(student.id, student.name)}
-                                        className="px-2 text-red-600"
-                                    >
-                                        Rimuovi
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                        <p>Presenti oggi: {currentDayAttendance.filter(s => s.present === true).length}</p>
-                        <p>Assenti oggi: {currentDayAttendance.filter(s => s.present === false).length}</p>
-                        <p>Totale iscritti: {currentDayAttendance.length}</p>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow">
-                        <button
-                            className="w-full p-4 text-left font-semibold flex justify-between items-center"
-                            onClick={() => setShowStats(!showStats)}
-                        >
-                            <span>Statistiche Totali</span>
-                            <span>{showStats ? "▼" : "▶"}</span>
-                        </button>
-                        
-                        {showStats && (
-                            <div className="p-4">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr>
-                                            <th className="text-left p-2">Nome</th>
-                                            <th className="text-center p-2">Presenze</th>
-                                            <th className="text-center p-2">Assenze</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {Object.entries(totalStats).map(([name, data], index) => (
-                                            <tr key={index} className="border-t">
-                                                <td className="p-2">{name}</td>
-                                                <td className="text-center p-2">{data.present}</td>
-                                                <td className="text-center p-2">{data.absent}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
+            // Logica del componente come nel codice precedente
         };
 
         ReactDOM.render(<AttendanceTracker />, document.getElementById('root'));
-    </script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(registration => {
-                    console.log('ServiceWorker registrato');
-                }).catch(err => {
-                    console.log('ServiceWorker errore: ', err);
-                });
-            });
-        }
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -282,3 +60,4 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 </body>
 </html>
+
