@@ -175,19 +175,21 @@
             };
 
             const removeStudent = async (studentId, studentName) => {
+                console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
                 try {
-                    console.log(`Inizio rimozione student ID: ${studentId}`);
+                    // Rimuovi dal database
                     await db.collection("students").doc(studentId).delete();
                     console.log("Studente rimosso dalla collezione 'students'");
-            
+
+                    // Rimuovi le statistiche totali
                     await db.collection("totalStats").doc(studentName).delete();
                     console.log("Statistica rimossa dalla collezione 'totalStats'");
-            
-                    // Modifica attendance
+
+                    // Aggiorna la presenza giornaliera
                     const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
                     await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
                     console.log("Attendance aggiornata per la data selezionata");
-            
+
                     // Aggiorna lo stato in React
                     setStudents(prev => prev.filter(student => student.id !== studentId));
                     setDailyAttendance(prev => ({
@@ -199,14 +201,12 @@
                         delete updatedStats[studentName];
                         return updatedStats;
                     });
-            
+
                     console.log("Rimozione completata:", studentName);
                 } catch (e) {
                     console.error("Errore durante la rimozione dello studente:", e);
                 }
             };
-
-
 
             const toggleStats = () => setShowStats(!showStats);
 
