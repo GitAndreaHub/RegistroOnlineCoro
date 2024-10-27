@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=no">
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="icon.png">
     <title>Registro GiocoCoro</title>
@@ -93,7 +93,7 @@
                     const attendanceData = docSnap.data().students || [];
                     const updatedAttendance = students.map(student => {
                         const existingRecord = attendanceData.find(att => att.name === student.name);
-                        return existingRecord ? { ...existingRecord, id: student.id } : { name: student.name, present: null, id: student.id };
+                        return existingRecord ? existingRecord : { name: student.name, present: null };
                     });
 
                     setDailyAttendance(prev => ({
@@ -105,7 +105,7 @@
                         await docRef.set({ students: updatedAttendance });
                     }
                 } else {
-                    const defaultAttendance = students.map(student => ({ name: student.name, present: null, id: student.id }));
+                    const defaultAttendance = students.map(student => ({ name: student.name, present: null }));
                     setDailyAttendance(prev => ({
                         ...prev,
                         [selectedDate]: defaultAttendance
@@ -175,6 +175,11 @@
             };
 
             const removeStudent = async (studentId, studentName) => {
+                if (!window.confirm(`Sei sicuro di voler rimuovere ${studentName}?`)) {
+                    console.log("Rimozione annullata");
+                    return;
+                }
+
                 console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
                 try {
                     await db.collection("students").doc(studentId).delete();
@@ -206,7 +211,7 @@
 
             const toggleStats = () => setShowStats(!showStats);
 
-            const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null, id: student.id }));
+            const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null }));
 
             return (
                 <div className="max-w-md mx-auto p-4">
@@ -293,4 +298,5 @@
     </script>
 </body>
 </html>
+
 
