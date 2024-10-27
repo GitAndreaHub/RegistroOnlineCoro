@@ -7,22 +7,6 @@
     <link rel="apple-touch-icon" href="icon.png">
     <title>Registro GiocoCoro</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <style>
-        body {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-            height: 100%;
-        }
-        #root {
-            height: 100%;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -56,7 +40,6 @@
         const AttendanceTracker = () => {
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [newStudent, setNewStudent] = useState('');
-            const [showStats, setShowStats] = useState(false);
             const [students, setStudents] = useState([]);
             const [dailyAttendance, setDailyAttendance] = useState({});
 
@@ -84,9 +67,7 @@
                 const trimmedStudent = newStudent.trim();
                 if (trimmedStudent && !students.some(s => s.name === trimmedStudent)) {
                     try {
-                        const docRef = await db.collection("students").add({
-                            name: trimmedStudent
-                        });
+                        const docRef = await db.collection("students").add({ name: trimmedStudent });
                         setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
                         setNewStudent('');
                     } catch (e) {
@@ -96,55 +77,83 @@
             };
 
             const toggleAttendance = (studentName) => {
-                setDailyAttendance(prev => {
-                    const updatedAttendance = {
-                        ...prev,
-                        [selectedDate]: prev[selectedDate].map(student =>
-                            student.name === studentName
-                                ? { ...student, present: student.present === null ? true : student.present === true ? false : null }
-                                : student
-                        )
-                    };
-                    db.collection("attendance").doc(selectedDate).set({
-                        students: updatedAttendance[selectedDate]
-                    }).catch((error) => {
-                        console.error("Errore durante l'aggiornamento delle presenze:", error);
-                    });
-                    return updatedAttendance;
-                });
+                setDailyAttendance(prev => ({
+                    ...prev,
+                    [selectedDate]: prev[selectedDate]?.map(student => 
+                        student.name === studentName 
+                            ? { ...student, present: student.present === null ? true : !student.present }
+                            : student
+                    )
+                }));
             };
 
             const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null }));
 
+            useEffect(() => {
+                if (!dailyAttendance[selectedDate]) {
+                    const newDayAttendance = students.map(student => ({ name: student.name, present: null }));
+                    setDailyAttendance(prev => ({
+                        ...prev,
+                        [selectedDate]: newDayAttendance
+                    }));
+
+                    // Salva la nuova giornata su Firebase se non esiste già
+                    db.collection("attendance").doc(selectedDate).set({
+                        students: newDayAttendance
+                    });
+                }
+            }, [selectedDate, students]);
+
             return (
                 <div className="max-w-md mx-auto p-4">
                     <h1 className="text-2xl font-bold mb-4 text-center">Registro GiocoCoro</h1>
-                    <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="w-full p-2 border rounded mb-4"
-                    />
-                    <input
-                        type="text"
-                        placeholder="Nome nuovo studente"
-                        value={newStudent}
-                        onChange={(e) => setNewStudent(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAddStudent()}
-                        className="flex-1 p-2 border rounded mb-4"
-                    />
-                    <button onClick={handleAddStudent} className="px-4 py-2 text-white bg-blue-600 rounded">Aggiungi</button>
-                    {currentDayAttendance.map((student, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border-b">
-                            <span>{student.name}</span>
-                            <button
-                                onClick={() => toggleAttendance(student.name)}
-                                className="px-3 py-1 bg-gray-200 rounded"
-                            >
-                                {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
-                            </button>
-                        </div>
-                    ))}
+
+                    <div className="mb-6">
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="w-full p-2 border rounded"
+                        />
+                    </div>
+
+                    <div className="flex gap-2 mb-6">
+                        <input
+                            type="text"
+                            placeholder="Nome nuovo studente"
+                            value={newStudent}
+                            onChange={(e) => setNewStudent(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleAddStudent()}
+                            className="flex-1 p-2 border rounded"
+                        />
+                        <button
+                            onClick={handleAddStudent}
+                            className="px-4 py-2 text-white rounded"
+                            style={{ backgroundColor: '#E6007E' }}
+                        >
+                            Aggiungi
+                        </button>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow mb-6">
+                        {currentDayAttendance.map((student, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 border-b">
+                                <span>{student.name}</span>
+                                <button
+                                    onClick={() => toggleAttendance(student.name)}
+                                    className={`px-3 py-1 rounded ${
+                                        student.present === true 
+                                            ? 'bg-green-600 text-white' 
+                                            : student.present === false 
+                                                ? 'bg-red-600 text-white' 
+                                                : 'bg-gray-200'
+                                    }`}
+                                >
+                                    {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             );
         };
