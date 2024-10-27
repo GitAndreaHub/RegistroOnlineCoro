@@ -63,7 +63,7 @@
             useEffect(() => {
                 fetchStudents();
                 fetchDailyAttendance();
-            }, []);
+            }, [selectedDate]);
 
             const toggleStats = () => {
                 setShowStats(!showStats);
@@ -76,12 +76,15 @@
             };
 
             const fetchDailyAttendance = async () => {
-                const querySnapshot = await db.collection("attendance").get();
-                const attendanceData = {};
-                querySnapshot.docs.forEach(doc => {
-                    attendanceData[doc.id] = doc.data().students || [];
-                });
-                setDailyAttendance(attendanceData);
+                const docRef = db.collection("attendance").doc(selectedDate);
+                const docSnap = await docRef.get();
+                if (docSnap.exists) {
+                    setDailyAttendance(docSnap.data().students || []);
+                } else {
+                    const defaultAttendance = students.map(student => ({ name: student.name, present: null }));
+                    setDailyAttendance(defaultAttendance);
+                    await docRef.set({ students: defaultAttendance });
+                }
             };
 
             const handleAddStudent = async () => {
@@ -93,83 +96,56 @@
                         });
                         setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
                         setNewStudent('');
+                        fetchDailyAttendance(); // Aggiorna l'attendance giornaliera per includere il nuovo studente
                     } catch (e) {
                         console.error("Errore durante l'aggiunta dello studente: ", e);
                     }
                 }
             };
 
-            const removeStudentFromRegister = async (studentId, studentName) => {
-                const confirmed = window.confirm(`Sei sicuro di voler rimuovere ${studentName}?`);
-                if (confirmed) {
-                    try {
-                        await db.collection("students").doc(studentId).delete();
-                        setStudents(prev => prev.filter(student => student.id !== studentId));
-                        setDailyAttendance(prev => {
-                            const updatedAttendance = { ...prev };
-                            for (let date in updatedAttendance) {
-                                updatedAttendance[date] = updatedAttendance[date].filter(student => student.name !== studentName);
-                            }
-                            return updatedAttendance;
-                        });
-                    } catch (e) {
-                        console.error("Errore durante l'eliminazione dello studente: ", e);
-                    }
-                }
-            };
-
             const toggleAttendance = (studentName) => {
-                setDailyAttendance(prev => ({
-                    ...prev,
-                    [selectedDate]: prev[selectedDate]?.map(student => 
-                        student.name === studentName 
-                            ? { ...student, present: student.present === null ? true : student.present === true ? false : null }
-                            : student
-                    )
-                }));
+                const updatedAttendance = dailyAttendance.map(student =>
+                    student.name === studentName ? { ...student, present: student.present === null ? true : !student.present } : student
+                );
+                setDailyAttendance(updatedAttendance);
+                db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
             };
 
-            const getAttendanceStatus = (status) => {
-                if (status === true) return "Presente";
-                if (status === false) return "Assente";
-                return "Non definito";
-            };
-
-            const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null }));
-
-            useEffect(() => {
-                if (!dailyAttendance[selectedDate]) {
-                    const newDayAttendance = students.map(student => ({ name: student.name, present: null }));
-                    setDailyAttendance(prev => ({
-                        ...prev,
-                        [selectedDate]: newDayAttendance
-                    }));
-                    // Salva la nuova giornata su Firebase
-                    db.collection("attendance").doc(selectedDate).set({
-                        students: newDayAttendance
-                    });
-                }
-            }, [selectedDate, students]);
+            const currentDayAttendance = dailyAttendance || [];
 
             return (
                 <div className="max-w-md mx-auto p-4">
                     <h1 className="text-2xl font-bold mb-4 text-center">Registro GiocoCoro</h1>
                     
-                    {/* Data e input nuovo studente */}
                     <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full p-2 border rounded mb-4" />
                     <div className="flex gap-2 mb-4">
                         <input type="text" placeholder="Nome nuovo studente" value={newStudent} onChange={(e) => setNewStudent(e.target.value)} className="flex-1 p-2 border rounded" />
                         <button onClick={handleAddStudent} className="px-4 py-2 text-white rounded" style={{ backgroundColor: '#E6007E' }}>Aggiungi</button>
                     </div>
 
-                    {/* Statistiche del giorno */}
+                    {/* Presenze giornaliere */}
                     <div className="bg-gray-100 p-4 rounded-lg mb-4">
-                        <p>Presenti oggi: 0</p>
-                        <p>Assenti oggi: 0</p>
+                        <p>Presenti oggi: {currentDayAttendance.filter(s => s.present === true).length}</p>
+                        <p>Assenti oggi: {currentDayAttendance.filter(s => s.present === false).length}</p>
                         <p>Totale iscritti: {students.length}</p>
                     </div>
 
-                    {/* Statistiche Totali con freccia */}
+                    {/* Lista degli studenti per la giornata */}
+                    <div className="bg-white rounded-lg shadow mb-6">
+                        {currentDayAttendance.map((student, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 border-b">
+                                <span>{student.name}</span>
+                                <button
+                                    onClick={() => toggleAttendance(student.name)}
+                                    className={`px-3 py-1 rounded ${student.present ? 'bg-green-600 text-white' : student.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
+                                >
+                                    {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Statistiche Totali */}
                     <div className="bg-white rounded-lg shadow">
                         <button className="w-full p-4 text-left font-semibold flex justify-between items-center" onClick={toggleStats}>
                             <span>Statistiche Totali</span>
@@ -189,8 +165,8 @@
                                         {students.map((student, index) => (
                                             <tr key={index} className="border-t">
                                                 <td className="p-2">{student.name}</td>
-                                                <td className="text-center p-2">0</td> {/* Modifica con la logica per le presenze */}
-                                                <td className="text-center p-2">0</td> {/* Modifica con la logica per le assenze */}
+                                                <td className="text-center p-2">0</td>
+                                                <td className="text-center p-2">0</td>
                                             </tr>
                                         ))}
                                     </tbody>
