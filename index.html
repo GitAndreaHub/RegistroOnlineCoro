@@ -53,6 +53,30 @@
 
         const { useState, useEffect } = React;
 
+        // Effetto per recuperare gli studenti e l'attenza giornaliera all'inizio
+        useEffect(() => {
+            fetchStudents();
+            fetchDailyAttendance();
+        }, []);
+    
+        // Nuovo useEffect per garantire che `dailyAttendance[selectedDate]` sia sempre definito come array
+        useEffect(() => {
+            if (!dailyAttendance[selectedDate]) {
+                const newDayAttendance = students.length > 0 
+                    ? students.map(student => ({ name: student.name, present: null })) 
+                    : [];
+                setDailyAttendance(prev => ({
+                    ...prev,
+                    [selectedDate]: newDayAttendance
+                }));
+    
+                // Salva la nuova giornata su Firebase
+                db.collection("attendance").doc(selectedDate).set({
+                    students: newDayAttendance
+                });
+            }
+        }, [selectedDate, students]);
+
         const AttendanceTracker = () => {
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [newStudent, setNewStudent] = useState('');
@@ -111,9 +135,9 @@
                 db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
             };
 
-            const currentDayAttendance = Array.isArray(dailyAttendance[selectedDate])
-            ? dailyAttendance[selectedDate]
-            : students.map(student => ({ name: student.name, present: null }));
+            const currentDayAttendance = Array.isArray(dailyAttendance[selectedDate]) 
+            ? dailyAttendance[selectedDate] 
+            : [];
 
 
             return (
