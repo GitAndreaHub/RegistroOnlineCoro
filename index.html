@@ -65,7 +65,9 @@
             }, []);
 
             useEffect(() => {
-                fetchDailyAttendance();
+                if (students.length > 0) {
+                    fetchDailyAttendance();
+                }
             }, [selectedDate, students]);
 
             const fetchStudents = async () => {
@@ -192,5 +194,4 @@
     </script>
 </body>
 </html>
-
 
