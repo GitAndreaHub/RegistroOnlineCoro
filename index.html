@@ -176,48 +176,36 @@
 
             const removeStudent = async (studentId, studentName) => {
                 try {
-                    console.log("Inizio rimozione dello studente:", studentName);
-            
-                    // Rimuovi dal database
+                    console.log("Inizio rimozione studente:", studentName);
+                    
+                    // Rimozione su Firebase
                     await db.collection("students").doc(studentId).delete();
-                    console.log("Studente rimosso dalla collezione 'students' su Firebase");
-            
+                    console.log("Studente rimosso da 'students'.");
+
                     await db.collection("totalStats").doc(studentName).delete();
-                    console.log("Statistiche rimosse dalla collezione 'totalStats' su Firebase");
-            
-                    // Rimuovi anche dall'attendance giornaliera
+                    console.log("Statistiche rimosse da 'totalStats'.");
+
                     const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
                     await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-                    console.log("Presenze aggiornate nella collezione 'attendance' su Firebase");
-            
-                    // Aggiorna la lista degli studenti
-                    setStudents(prev => {
-                        const newStudents = prev.filter(student => student.id !== studentId);
-                        console.log("Aggiornato lo stato 'students' locale:", newStudents);
-                        return newStudents;
-                    });
-            
-                    setDailyAttendance(prev => {
-                        const newDailyAttendance = { ...prev, [selectedDate]: updatedAttendance };
-                        console.log("Aggiornato lo stato 'dailyAttendance' locale:", newDailyAttendance);
-                        return newDailyAttendance;
-                    });
-            
+                    console.log("Attendance aggiornata per la data selezionata.");
+
+                    setStudents(prev => prev.filter(student => student.id !== studentId));
+                    setDailyAttendance(prev => ({
+                        ...prev,
+                        [selectedDate]: updatedAttendance
+                    }));
+
                     setTotalStats(prev => {
                         const updatedStats = { ...prev };
                         delete updatedStats[studentName];
-                        console.log("Aggiornato lo stato 'totalStats' locale:", updatedStats);
                         return updatedStats;
                     });
-            
-                    console.log("Rimozione dello studente completata per:", studentName);
+
+                    console.log("Rimozione completata:", studentName);
                 } catch (e) {
                     console.error("Errore durante la rimozione dello studente:", e);
                 }
             };
-
-
-
 
             const toggleStats = () => setShowStats(!showStats);
 
@@ -227,9 +215,22 @@
                 <div className="max-w-md mx-auto p-4">
                     <h1 className="text-2xl font-bold mb-4 text-center">Registro GiocoCoro</h1>
 
-                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full p-2 border rounded mb-4" />
+                    <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="w-full p-2 border rounded mb-4"
+                        id="selectedDate" 
+                    />
                     <div className="flex gap-2 mb-4">
-                        <input type="text" placeholder="Nome nuovo studente" value={newStudent} onChange={(e) => setNewStudent(e.target.value)} className="flex-1 p-2 border rounded" />
+                        <input
+                            type="text"
+                            placeholder="Nome nuovo studente"
+                            value={newStudent}
+                            onChange={(e) => setNewStudent(e.target.value)}
+                            className="flex-1 p-2 border rounded"
+                            id="newStudent" 
+                        />
                         <button onClick={handleAddStudent} className="px-4 py-2 text-white rounded" style={{ backgroundColor: '#E6007E' }}>Aggiungi</button>
                     </div>
 
