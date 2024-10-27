@@ -53,55 +53,27 @@
 
         const { useState, useEffect } = React;
 
-        // Effetto per recuperare gli studenti e l'attenza giornaliera all'inizio
-        useEffect(() => {
-            fetchStudents();
-            fetchDailyAttendance();
-        }, []);
-        
-        // Nuovo useEffect per garantire che `dailyAttendance[selectedDate]` sia sempre definito come array
-        useEffect(() => {
-            // Controllo che `dailyAttendance`, `selectedDate` e `students` non siano null o undefined
-            if (dailyAttendance && selectedDate && students && !dailyAttendance[selectedDate]) {
-                const newDayAttendance = students.length > 0 
-                    ? students.map(student => ({ name: student.name, present: null })) 
-                    : [];
-                
-                setDailyAttendance(prev => ({
-                    ...prev,
-                    [selectedDate]: newDayAttendance
-                }));
-        
-                // Salva la nuova giornata su Firebase
-                db.collection("attendance").doc(selectedDate).set({
-                    students: newDayAttendance
-                });
-            }
-        }, [selectedDate, students, dailyAttendance]);
-
-
         const AttendanceTracker = () => {
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [newStudent, setNewStudent] = useState('');
             const [showStats, setShowStats] = useState(false);
             const [students, setStudents] = useState([]);
             const [dailyAttendance, setDailyAttendance] = useState({});
-        
-            // Recupera studenti e presenze giornaliere all'avvio
+
             useEffect(() => {
                 fetchStudents();
             }, []);
-        
+
             useEffect(() => {
                 fetchDailyAttendance();
             }, [selectedDate, students]);
-        
+
             const fetchStudents = async () => {
                 const querySnapshot = await db.collection("students").get();
                 const studentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setStudents(studentsList);
             };
-        
+
             const fetchDailyAttendance = async () => {
                 const docRef = db.collection("attendance").doc(selectedDate);
                 const docSnap = await docRef.get();
@@ -119,7 +91,7 @@
                     await docRef.set({ students: defaultAttendance });
                 }
             };
-        
+
             const handleAddStudent = async () => {
                 const trimmedStudent = newStudent.trim();
                 if (trimmedStudent && !students.some(s => s.name === trimmedStudent)) {
@@ -134,7 +106,7 @@
                     }
                 }
             };
-        
+
             const toggleAttendance = (studentName) => {
                 setDailyAttendance(prev => {
                     const updatedAttendance = prev[selectedDate].map(student => 
@@ -149,11 +121,11 @@
                     };
                 });
             };
-        
+
             const toggleStats = () => setShowStats(!showStats);
-        
+
             const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null }));
-        
+
             return (
                 <div className="max-w-md mx-auto p-4">
                     <h1 className="text-2xl font-bold mb-4 text-center">Registro GiocoCoro</h1>
@@ -163,13 +135,13 @@
                         <input type="text" placeholder="Nome nuovo studente" value={newStudent} onChange={(e) => setNewStudent(e.target.value)} className="flex-1 p-2 border rounded" />
                         <button onClick={handleAddStudent} className="px-4 py-2 text-white rounded" style={{ backgroundColor: '#E6007E' }}>Aggiungi</button>
                     </div>
-        
+
                     <div className="bg-gray-100 p-4 rounded-lg mb-4">
                         <p>Presenti oggi: {currentDayAttendance.filter(s => s.present === true).length}</p>
                         <p>Assenti oggi: {currentDayAttendance.filter(s => s.present === false).length}</p>
                         <p>Totale iscritti: {students.length}</p>
                     </div>
-        
+
                     <div className="bg-white rounded-lg shadow mb-6">
                         {currentDayAttendance.map((student, index) => (
                             <div key={index} className="flex items-center justify-between p-3 border-b">
@@ -183,7 +155,7 @@
                             </div>
                         ))}
                     </div>
-        
+
                     <div className="bg-white rounded-lg shadow">
                         <button className="w-full p-4 text-left font-semibold flex justify-between items-center" onClick={toggleStats}>
                             <span>Statistiche Totali</span>
@@ -216,9 +188,9 @@
             );
         };
 
-
         ReactDOM.render(<AttendanceTracker />, document.getElementById('root'));
     </script>
 </body>
 </html>
+
 
