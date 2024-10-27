@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scaleable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="icon.png">
     <title>Registro GiocoCoro</title>
@@ -93,7 +93,7 @@
                     const attendanceData = docSnap.data().students || [];
                     const updatedAttendance = students.map(student => {
                         const existingRecord = attendanceData.find(att => att.name === student.name);
-                        return existingRecord ? { id: student.id, ...existingRecord } : { id: student.id, name: student.name, present: null };
+                        return existingRecord ? { ...existingRecord, id: student.id } : { name: student.name, present: null, id: student.id };
                     });
 
                     setDailyAttendance(prev => ({
@@ -105,7 +105,7 @@
                         await docRef.set({ students: updatedAttendance });
                     }
                 } else {
-                    const defaultAttendance = students.map(student => ({ id: student.id, name: student.name, present: null }));
+                    const defaultAttendance = students.map(student => ({ name: student.name, present: null, id: student.id }));
                     setDailyAttendance(prev => ({
                         ...prev,
                         [selectedDate]: defaultAttendance
@@ -177,20 +177,16 @@
             const removeStudent = async (studentId, studentName) => {
                 console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
                 try {
-                    // Rimuovi dal database
                     await db.collection("students").doc(studentId).delete();
                     console.log("Studente rimosso dalla collezione 'students'");
 
-                    // Rimuovi le statistiche totali
                     await db.collection("totalStats").doc(studentName).delete();
                     console.log("Statistica rimossa dalla collezione 'totalStats'");
 
-                    // Aggiorna la presenza giornaliera
                     const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
                     await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
                     console.log("Attendance aggiornata per la data selezionata");
 
-                    // Aggiorna lo stato in React
                     setStudents(prev => prev.filter(student => student.id !== studentId));
                     setDailyAttendance(prev => ({
                         ...prev,
@@ -210,7 +206,7 @@
 
             const toggleStats = () => setShowStats(!showStats);
 
-            const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ id: student.id, name: student.name, present: null }));
+            const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null, id: student.id }));
 
             return (
                 <div className="max-w-md mx-auto p-4">
