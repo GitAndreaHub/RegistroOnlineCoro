@@ -176,43 +176,36 @@
 
             const removeStudent = async (studentId, studentName) => {
                 try {
-                    console.log(`Inizio rimozione studente: ${studentName} con ID: ${studentId}`);
+                    console.log(`Inizio rimozione student ID: ${studentId}`);
+                    await db.collection("students").doc(studentId).delete();
+                    console.log("Studente rimosso dalla collezione 'students'");
             
-                    // Passo 1: Rimuovere lo studente dal database 'students'
-                    await db.collection("students").doc(studentId).delete()
-                        .then(() => console.log(`Studente rimosso da 'students': ${studentId}`))
-                        .catch((error) => console.error(`Errore nella rimozione da 'students': ${error.message}`));
+                    await db.collection("totalStats").doc(studentName).delete();
+                    console.log("Statistica rimossa dalla collezione 'totalStats'");
             
-                    // Passo 2: Rimuovere le statistiche totali per lo studente
-                    await db.collection("totalStats").doc(studentName).delete()
-                        .then(() => console.log(`Statistiche rimosse da 'totalStats' per: ${studentName}`))
-                        .catch((error) => console.error(`Errore nella rimozione da 'totalStats': ${error.message}`));
-            
-                    // Passo 3: Rimuovere l'attendance giornaliera per lo studente
+                    // Modifica attendance
                     const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
-                    await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance })
-                        .then(() => console.log(`Attendance aggiornata per la data ${selectedDate}`))
-                        .catch((error) => console.error(`Errore nell'aggiornamento dell'attendance: ${error.message}`));
+                    await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+                    console.log("Attendance aggiornata per la data selezionata");
             
-                    // Passo 4: Aggiornare lo stato della lista degli studenti e dell'attendance giornaliera
+                    // Aggiorna lo stato in React
                     setStudents(prev => prev.filter(student => student.id !== studentId));
                     setDailyAttendance(prev => ({
                         ...prev,
                         [selectedDate]: updatedAttendance
                     }));
-                    
-                    // Passo 5: Aggiornare le statistiche totali
                     setTotalStats(prev => {
                         const updatedStats = { ...prev };
                         delete updatedStats[studentName];
                         return updatedStats;
                     });
             
-                    console.log(`Rimozione completata con successo per: ${studentName}`);
+                    console.log("Rimozione completata:", studentName);
                 } catch (e) {
                     console.error("Errore durante la rimozione dello studente:", e);
                 }
             };
+
 
 
             const toggleStats = () => setShowStats(!showStats);
