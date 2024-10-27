@@ -7,6 +7,22 @@
     <link rel="apple-touch-icon" href="icon.png">
     <title>Registro GiocoCoro</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+        #root {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -31,6 +47,7 @@
           appId: "1:816758508935:web:81f9c5de9f2cafb5f31722"
         };
 
+        // Inizializza Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
@@ -48,6 +65,10 @@
                 fetchDailyAttendance();
             }, []);
 
+            const toggleStats = () => {
+                setShowStats(!showStats);
+            };
+
             const fetchStudents = async () => {
                 const querySnapshot = await db.collection("students").get();
                 const studentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -63,71 +84,120 @@
                 setDailyAttendance(attendanceData);
             };
 
-            const toggleStats = () => {
-                setShowStats(prev => !prev);
+            const handleAddStudent = async () => {
+                const trimmedStudent = newStudent.trim();
+                if (trimmedStudent && !students.some(s => s.name === trimmedStudent)) {
+                    try {
+                        const docRef = await db.collection("students").add({
+                            name: trimmedStudent
+                        });
+                        setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
+                        setNewStudent('');
+                    } catch (e) {
+                        console.error("Errore durante l'aggiunta dello studente: ", e);
+                    }
+                }
+            };
+
+            const removeStudentFromRegister = async (studentId, studentName) => {
+                const confirmed = window.confirm(`Sei sicuro di voler rimuovere ${studentName}?`);
+                if (confirmed) {
+                    try {
+                        await db.collection("students").doc(studentId).delete();
+                        setStudents(prev => prev.filter(student => student.id !== studentId));
+                        setDailyAttendance(prev => {
+                            const updatedAttendance = { ...prev };
+                            for (let date in updatedAttendance) {
+                                updatedAttendance[date] = updatedAttendance[date].filter(student => student.name !== studentName);
+                            }
+                            return updatedAttendance;
+                        });
+                    } catch (e) {
+                        console.error("Errore durante l'eliminazione dello studente: ", e);
+                    }
+                }
+            };
+
+            const toggleAttendance = (studentName) => {
+                setDailyAttendance(prev => ({
+                    ...prev,
+                    [selectedDate]: prev[selectedDate]?.map(student => 
+                        student.name === studentName 
+                            ? { ...student, present: student.present === null ? true : student.present === true ? false : null }
+                            : student
+                    )
+                }));
+            };
+
+            const getAttendanceStatus = (status) => {
+                if (status === true) return "Presente";
+                if (status === false) return "Assente";
+                return "Non definito";
             };
 
             const currentDayAttendance = dailyAttendance[selectedDate] || students.map(student => ({ name: student.name, present: null }));
 
+            useEffect(() => {
+                if (!dailyAttendance[selectedDate]) {
+                    const newDayAttendance = students.map(student => ({ name: student.name, present: null }));
+                    setDailyAttendance(prev => ({
+                        ...prev,
+                        [selectedDate]: newDayAttendance
+                    }));
+                    // Salva la nuova giornata su Firebase
+                    db.collection("attendance").doc(selectedDate).set({
+                        students: newDayAttendance
+                    });
+                }
+            }, [selectedDate, students]);
+
             return (
                 <div className="max-w-md mx-auto p-4">
                     <h1 className="text-2xl font-bold mb-4 text-center">Registro GiocoCoro</h1>
-
-                    <div className="mb-4">
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="w-full p-2 border rounded"
-                        />
-                    </div>
-
+                    
+                    {/* Data e input nuovo studente */}
+                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full p-2 border rounded mb-4" />
                     <div className="flex gap-2 mb-4">
-                        <input
-                            type="text"
-                            placeholder="Nome nuovo studente"
-                            value={newStudent}
-                            onChange={(e) => setNewStudent(e.target.value)}
-                            className="flex-1 p-2 border rounded"
-                        />
-                        <button className="px-4 py-2 bg-pink-600 text-white rounded">
-                            Aggiungi
-                        </button>
+                        <input type="text" placeholder="Nome nuovo studente" value={newStudent} onChange={(e) => setNewStudent(e.target.value)} className="flex-1 p-2 border rounded" />
+                        <button onClick={handleAddStudent} className="px-4 py-2 text-white rounded" style={{ backgroundColor: '#E6007E' }}>Aggiungi</button>
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                    {/* Statistiche del giorno */}
+                    <div className="bg-gray-100 p-4 rounded-lg mb-4">
                         <p>Presenti oggi: 0</p>
                         <p>Assenti oggi: 0</p>
                         <p>Totale iscritti: {students.length}</p>
                     </div>
 
-                    <button onClick={toggleStats} className="w-full p-4 text-left font-semibold flex justify-between items-center bg-gray-200 rounded">
-                        <span>Statistiche Totali</span>
-                        <span>{showStats ? "▲" : "▼"}</span>
-                    </button>
-
-                    {showStats && (
-                        <div className="p-4 bg-white shadow rounded-lg mt-2">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr>
-                                        <th>Nome</th>
-                                        <th>Presenze</th>
-                                        <th>Assenze</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {students.map((student, index) => (
-                                        <tr key={index} className="border-t">
-                                            <td>{student.name}</td>
-                                            <td>0</td>
-                                            <td>0</td>
+                    {/* Statistiche Totali con freccia */}
+                    <div className="bg-white rounded-lg shadow">
+                        <button className="w-full p-4 text-left font-semibold flex justify-between items-center" onClick={toggleStats}>
+                            <span>Statistiche Totali</span>
+                            <span>{showStats ? "▼" : "▶"}</span>
+                        </button>
+                        {showStats && (
+                            <div className="p-4">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr>
+                                            <th className="text-left p-2">Nome</th>
+                                            <th className="text-center p-2">Presenze</th>
+                                            <th className="text-center p-2">Assenze</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                    </thead>
+                                    <tbody>
+                                        {students.map((student, index) => (
+                                            <tr key={index} className="border-t">
+                                                <td className="p-2">{student.name}</td>
+                                                <td className="text-center p-2">0</td> {/* Modifica con la logica per le presenze */}
+                                                <td className="text-center p-2">0</td> {/* Modifica con la logica per le assenze */}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         };
