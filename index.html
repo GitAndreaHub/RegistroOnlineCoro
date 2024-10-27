@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scaleable=no">
+    <meta name="viewport" content="width=device-width, initial-scaleable=no">
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="icon.png">
     <title>Registro GiocoCoro</title>
@@ -38,7 +38,7 @@
 
     <script type="text/babel">
         const firebaseConfig = {
-          apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
+          apiKey: "API_KEY",
           authDomain: "registro-giococoro.firebaseapp.com",
           projectId: "registro-giococoro",
           storageBucket: "registro-giococoro.appspot.com",
@@ -130,21 +130,16 @@
             };
 
             const removeStudent = async (studentId, studentName) => {
-                console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
                 if (!studentId) {
                     console.error("ID dello studente non trovato. Impossibile procedere con la rimozione.");
                     return;
                 }
                 try {
                     await db.collection("students").doc(studentId).delete();
-                    console.log("Studente rimosso dalla collezione 'students'");
-
                     await db.collection("totalStats").doc(studentName).delete();
-                    console.log("Statistica rimossa dalla collezione 'totalStats'");
 
                     const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
                     await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-                    console.log("Attendance aggiornata per la data selezionata");
 
                     setStudents(prev => prev.filter(student => student.id !== studentId));
                     setDailyAttendance(prev => ({
@@ -156,8 +151,6 @@
                         delete updatedStats[studentName];
                         return updatedStats;
                     });
-
-                    console.log("Rimozione completata:", studentName);
                 } catch (e) {
                     console.error("Errore durante la rimozione dello studente:", e);
                 }
@@ -245,9 +238,9 @@
                                 <span>{student.name}</span>
                                 <button
                                     onClick={() => toggleAttendance(student.name)}
-                                    className={`px-3 py-1 rounded ${dailyAttendance[selectedDate]?.find(s => s.name === student.name)?.present ? 'bg-green-600 text-white' : dailyAttendance[selectedDate]?.find(s => s.name === student.name)?.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
+                                    className={`px-3 py-1 rounded ${currentDayAttendance.find(s => s.name === student.name)?.present ? 'bg-green-600 text-white' : currentDayAttendance.find(s => s.name === student.name)?.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
                                 >
-                                    {dailyAttendance[selectedDate]?.find(s => s.name === student.name)?.present === true ? "Presente" : dailyAttendance[selectedDate]?.find(s => s.name === student.name)?.present === false ? "Assente" : "Non definito"}
+                                    {currentDayAttendance.find(s => s.name === student.name)?.present === true ? "Presente" : currentDayAttendance.find(s => s.name === student.name)?.present === false ? "Assente" : "Non definito"}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -300,3 +293,4 @@
     </script>
 </body>
 </html>
+
