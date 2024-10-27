@@ -163,7 +163,7 @@
                             const newStatus = student.present === null ? true : student.present === true ? false : null;
                             
                             // Aggiorna le statistiche totali passando il nuovo e il precedente stato
-                            updateTotalStats(studentName, newStatus, previousStatus);
+                            updateTotalStats(student.name, newStatus, previousStatus);
                             
                             return { ...student, present: newStatus };
                         }
@@ -178,6 +178,7 @@
                     };
                 });
             };
+
 
 
 
