@@ -130,16 +130,25 @@
                 setDailyAttendance(prev => {
                     const updatedAttendance = prev[selectedDate].map(student => 
                         student.name === studentName
-                            ? { ...student, present: student.present === null ? true : !student.present }
+                            ? { 
+                                ...student, 
+                                present: student.present === null ? true 
+                                         : student.present === true ? false 
+                                         : null 
+                            }
                             : student
                     );
+            
+                    // Aggiorna il documento su Firebase
                     db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+            
                     return {
                         ...prev,
                         [selectedDate]: updatedAttendance
                     };
                 });
             };
+
 
             const toggleStats = () => setShowStats(!showStats);
 
