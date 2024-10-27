@@ -176,21 +176,22 @@
 
             const removeStudent = async (studentId, studentName) => {
                 try {
-                    // Rimuovi dal database
+                    // Rimuovi lo studente dal database
                     await db.collection("students").doc(studentId).delete();
                     await db.collection("totalStats").doc(studentName).delete();
-            
-                    // Rimuovi anche dall'attendance giornaliera
+                    
+                    // Rimuovi lo studente anche dalla raccolta di presenze giornaliere
                     const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
                     await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-            
-                    // Aggiorna la lista degli studenti
+                    
+                    // Una volta completata l’eliminazione su Firebase, aggiorna lo stato locale
                     setStudents(prev => prev.filter(student => student.id !== studentId));
                     setDailyAttendance(prev => ({
                         ...prev,
                         [selectedDate]: updatedAttendance
                     }));
-            
+                    
+                    // Aggiorna le statistiche totali locali
                     setTotalStats(prev => {
                         const updatedStats = { ...prev };
                         delete updatedStats[studentName];
@@ -200,6 +201,7 @@
                     console.error("Errore durante la rimozione dello studente: ", e);
                 }
             };
+
 
 
             const toggleStats = () => setShowStats(!showStats);
