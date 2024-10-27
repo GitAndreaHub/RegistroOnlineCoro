@@ -179,16 +179,18 @@
                     // Rimuovi dal database
                     await db.collection("students").doc(studentId).delete();
                     await db.collection("totalStats").doc(studentName).delete();
-
+            
                     // Rimuovi anche dall'attendance giornaliera
-                    setDailyAttendance(prev => {
-                        const updatedAttendance = prev[selectedDate].filter(student => student.name !== studentName);
-                        db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-                        return { ...prev, [selectedDate]: updatedAttendance };
-                    });
-
+                    const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
+                    await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+            
                     // Aggiorna la lista degli studenti
                     setStudents(prev => prev.filter(student => student.id !== studentId));
+                    setDailyAttendance(prev => ({
+                        ...prev,
+                        [selectedDate]: updatedAttendance
+                    }));
+            
                     setTotalStats(prev => {
                         const updatedStats = { ...prev };
                         delete updatedStats[studentName];
@@ -198,6 +200,7 @@
                     console.error("Errore durante la rimozione dello studente: ", e);
                 }
             };
+
 
             const toggleStats = () => setShowStats(!showStats);
 
