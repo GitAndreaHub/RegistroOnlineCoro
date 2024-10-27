@@ -79,12 +79,11 @@
             const fetchDailyAttendance = async () => {
                 const docRef = db.collection("attendance").doc(selectedDate);
                 const docSnap = await docRef.get();
-                
+            
                 if (docSnap.exists) {
-                    // Aggiorna l'attenza giornaliera con i dati esistenti
                     const attendanceData = docSnap.data().students || [];
                     
-                    // Aggiungi eventuali nuovi studenti che non sono presenti in `attendanceData`
+                    // Crea una lista aggiornata che include tutti gli studenti
                     const updatedAttendance = students.map(student => {
                         const existingRecord = attendanceData.find(att => att.name === student.name);
                         return existingRecord ? existingRecord : { name: student.name, present: null };
@@ -94,9 +93,9 @@
                         ...prev,
                         [selectedDate]: updatedAttendance
                     }));
-                    
-                    // Aggiorna il documento su Firebase se ci sono nuovi studenti
-                    if (updatedAttendance.length !== attendanceData.length) {
+            
+                    // Aggiorna il documento su Firebase solo se ci sono modifiche
+                    if (JSON.stringify(updatedAttendance) !== JSON.stringify(attendanceData)) {
                         await docRef.set({ students: updatedAttendance });
                     }
                 } else {
@@ -109,6 +108,7 @@
                     await docRef.set({ students: defaultAttendance });
                 }
             };
+
 
 
             const handleAddStudent = async () => {
