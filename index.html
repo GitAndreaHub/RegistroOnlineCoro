@@ -59,9 +59,11 @@
             const [showStats, setShowStats] = useState(false);
             const [students, setStudents] = useState([]);
             const [dailyAttendance, setDailyAttendance] = useState({});
+            const [studentStats, setStudentStats] = useState({});
 
             useEffect(() => {
                 fetchStudents();
+                calculateStats();
             }, []);
 
             useEffect(() => {
@@ -82,24 +84,18 @@
             
                 if (docSnap.exists) {
                     const attendanceData = docSnap.data().students || [];
-                    
-                    // Crea una lista aggiornata che include tutti gli studenti
                     const updatedAttendance = students.map(student => {
                         const existingRecord = attendanceData.find(att => att.name === student.name);
                         return existingRecord ? existingRecord : { name: student.name, present: null };
                     });
-                    
                     setDailyAttendance(prev => ({
                         ...prev,
                         [selectedDate]: updatedAttendance
                     }));
-            
-                    // Aggiorna il documento su Firebase solo se ci sono modifiche
                     if (JSON.stringify(updatedAttendance) !== JSON.stringify(attendanceData)) {
                         await docRef.set({ students: updatedAttendance });
                     }
                 } else {
-                    // Se non esiste un record per questa data, crea un nuovo registro con tutti gli studenti
                     const defaultAttendance = students.map(student => ({ name: student.name, present: null }));
                     setDailyAttendance(prev => ({
                         ...prev,
@@ -109,17 +105,33 @@
                 }
             };
 
-
+            const calculateStats = async () => {
+                const stats = {};
+                const snapshot = await db.collection("attendance").get();
+                snapshot.forEach(doc => {
+                    const attendance = doc.data().students || [];
+                    attendance.forEach(record => {
+                        if (!stats[record.name]) {
+                            stats[record.name] = { present: 0, absent: 0 };
+                        }
+                        if (record.present === true) {
+                            stats[record.name].present += 1;
+                        } else if (record.present === false) {
+                            stats[record.name].absent += 1;
+                        }
+                    });
+                });
+                setStudentStats(stats);
+            };
 
             const handleAddStudent = async () => {
                 const trimmedStudent = newStudent.trim();
                 if (trimmedStudent && !students.some(s => s.name === trimmedStudent)) {
                     try {
-                        const docRef = await db.collection("students").add({
-                            name: trimmedStudent
-                        });
+                        const docRef = await db.collection("students").add({ name: trimmedStudent });
                         setStudents(prev => [...prev, { id: docRef.id, name: trimmedStudent }]);
                         setNewStudent('');
+                        calculateStats(); // Ricalcola le statistiche per includere il nuovo studente
                     } catch (e) {
                         console.error("Errore durante l'aggiunta dello studente: ", e);
                     }
@@ -139,18 +151,14 @@
                         }
                         return student;
                     });
-                    
-                    // Aggiorna il documento su Firebase
                     db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-            
+                    calculateStats(); // Ricalcola le statistiche ogni volta che si modifica una presenza
                     return {
                         ...prev,
                         [selectedDate]: updatedAttendance
                     };
                 });
             };
-
-
 
             const toggleStats = () => setShowStats(!showStats);
 
@@ -205,8 +213,8 @@
                                         {students.map((student, index) => (
                                             <tr key={index} className="border-t">
                                                 <td className="p-2">{student.name}</td>
-                                                <td className="text-center p-2">0</td>
-                                                <td className="text-center p-2">0</td>
+                                                <td className="text-center p-2">{studentStats[student.name]?.present || 0}</td>
+                                                <td className="text-center p-2">{studentStats[student.name]?.absent || 0}</td>
                                             </tr>
                                         ))}
                                     </tbody>
