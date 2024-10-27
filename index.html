@@ -133,14 +133,12 @@
                 const currentStats = totalStats[studentName] || { presenze: 0, assenze: 0 };
                 const newStats = { ...currentStats };
             
-                // Decrementa il valore precedente
                 if (previousStatus === true) {
                     newStats.presenze -= 1;
                 } else if (previousStatus === false) {
                     newStats.assenze -= 1;
                 }
             
-                // Incrementa il nuovo valore
                 if (newStatus === true) {
                     newStats.presenze += 1;
                 } else if (newStatus === false) {
@@ -154,24 +152,21 @@
             
                 await db.collection("totalStats").doc(studentName).set(newStats);
             };
-            
+
             const toggleAttendance = (studentName) => {
                 setDailyAttendance(prev => {
                     const updatedAttendance = prev[selectedDate].map(student => {
                         if (student.name === studentName) {
                             const previousStatus = student.present;
                             const newStatus = student.present === null ? true : student.present === true ? false : null;
-                            
-                            // Aggiorna le statistiche totali passando il nuovo e il precedente stato
                             updateTotalStats(student.name, newStatus, previousStatus);
-                            
                             return { ...student, present: newStatus };
                         }
                         return student;
                     });
-            
+
                     db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-            
+
                     return {
                         ...prev,
                         [selectedDate]: updatedAttendance
@@ -179,8 +174,30 @@
                 });
             };
 
+            const removeStudent = async (studentId, studentName) => {
+                try {
+                    // Rimuovi dal database
+                    await db.collection("students").doc(studentId).delete();
+                    await db.collection("totalStats").doc(studentName).delete();
 
+                    // Rimuovi anche dall'attendance giornaliera
+                    setDailyAttendance(prev => {
+                        const updatedAttendance = prev[selectedDate].filter(student => student.name !== studentName);
+                        db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+                        return { ...prev, [selectedDate]: updatedAttendance };
+                    });
 
+                    // Aggiorna la lista degli studenti
+                    setStudents(prev => prev.filter(student => student.id !== studentId));
+                    setTotalStats(prev => {
+                        const updatedStats = { ...prev };
+                        delete updatedStats[studentName];
+                        return updatedStats;
+                    });
+                } catch (e) {
+                    console.error("Errore durante la rimozione dello studente: ", e);
+                }
+            };
 
             const toggleStats = () => setShowStats(!showStats);
 
@@ -211,6 +228,12 @@
                                     className={`px-3 py-1 rounded ${student.present ? 'bg-green-600 text-white' : student.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
                                 >
                                     {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
+                                </button>
+                                <button
+                                    onClick={() => removeStudent(student.id, student.name)}
+                                    className="px-3 py-1 bg-red-500 text-white rounded"
+                                >
+                                    Rimuovi
                                 </button>
                             </div>
                         ))}
@@ -252,3 +275,4 @@
     </script>
 </body>
 </html>
+
