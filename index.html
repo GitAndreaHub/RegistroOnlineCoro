@@ -111,7 +111,10 @@
                 db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
             };
 
-            const currentDayAttendance = dailyAttendance || [];
+            const currentDayAttendance = Array.isArray(dailyAttendance[selectedDate])
+            ? dailyAttendance[selectedDate]
+            : students.map(student => ({ name: student.name, present: null }));
+
 
             return (
                 <div className="max-w-md mx-auto p-4">
