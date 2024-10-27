@@ -27,17 +27,15 @@
 <body>
     <div id="root"></div>
 
-    <!-- Importa React, ReactDOM e Babel -->
+    <!-- Importa React, ReactDOM -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
     <!-- Importa Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
 
-
-    <script type="text/babel">
+    <script>
         // Configurazione di Firebase
         const firebaseConfig = {
           apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
@@ -51,6 +49,10 @@
         // Inizializza Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+
+        // Verifica Firebase nel log
+        console.log("Firebase inizializzato:", firebase);
+        console.log("Firestore db:", db);
 
         const { useState, useEffect } = React;
 
@@ -156,15 +158,9 @@
             );
         };
 
-
-        console.log("Inizio inizializzazione dell'app");
-        console.log("Firebase:", firebase);
-        console.log("db:", db);
-        console.log("AttendanceTracker:", AttendanceTracker);
-
-
         ReactDOM.render(<AttendanceTracker />, document.getElementById('root'));
     </script>
 </body>
 </html>
+
 
