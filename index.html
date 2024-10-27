@@ -182,6 +182,11 @@
 
                 console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
                 try {
+                    if (!studentId) {
+                        console.error("ID dello studente non trovato. Impossibile procedere con la rimozione.");
+                        return;
+                    }
+
                     await db.collection("students").doc(studentId).delete();
                     console.log("Studente rimosso dalla collezione 'students'");
 
@@ -298,5 +303,4 @@
     </script>
 </body>
 </html>
-
 
