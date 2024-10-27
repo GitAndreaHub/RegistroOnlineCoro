@@ -128,12 +128,30 @@
             };
 
             const toggleAttendance = (studentName) => {
-                const updatedAttendance = dailyAttendance.map(student =>
-                    student.name === studentName ? { ...student, present: student.present === null ? true : !student.present } : student
-                );
-                setDailyAttendance(updatedAttendance);
-                db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+                setDailyAttendance((prev) => ({
+                    ...prev,
+                    [selectedDate]: prev[selectedDate].map((student) =>
+                        student.name === studentName
+                            ? {
+                                  ...student,
+                                  present: student.present === null 
+                                           ? true 
+                                           : student.present === true 
+                                           ? false 
+                                           : null,
+                              }
+                            : student
+                    ),
+                }));
+            
+                // Salva l'aggiornamento su Firebase
+                db.collection("attendance")
+                  .doc(selectedDate)
+                  .set({
+                      students: dailyAttendance[selectedDate],
+                  });
             };
+
 
             const currentDayAttendance = Array.isArray(dailyAttendance[selectedDate]) 
             ? dailyAttendance[selectedDate] 
