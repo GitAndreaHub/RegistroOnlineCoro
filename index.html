@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scaleable=no">
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="icon.png">
     <title>Registro GiocoCoro</title>
@@ -175,42 +175,38 @@
             };
 
             const removeStudent = async (studentId, studentName) => {
-                if (!window.confirm(`Sei sicuro di voler rimuovere ${studentName}?`)) {
-                    console.log("Rimozione annullata");
+                if (!studentId) {
+                    console.error("ID studente undefined. Annullamento rimozione.");
                     return;
                 }
+                if (window.confirm(`Sei sicuro di voler rimuovere lo studente ${studentName}?`)) {
+                    console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
+                    try {
+                        await db.collection("students").doc(studentId).delete();
+                        console.log("Studente rimosso dalla collezione 'students'");
 
-                console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
-                try {
-                    if (!studentId) {
-                        console.error("ID dello studente non trovato. Impossibile procedere con la rimozione.");
-                        return;
+                        await db.collection("totalStats").doc(studentName).delete();
+                        console.log("Statistica rimossa dalla collezione 'totalStats'");
+
+                        const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
+                        await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+                        console.log("Attendance aggiornata per la data selezionata");
+
+                        setStudents(prev => prev.filter(student => student.id !== studentId));
+                        setDailyAttendance(prev => ({
+                            ...prev,
+                            [selectedDate]: updatedAttendance
+                        }));
+                        setTotalStats(prev => {
+                            const updatedStats = { ...prev };
+                            delete updatedStats[studentName];
+                            return updatedStats;
+                        });
+
+                        console.log("Rimozione completata:", studentName);
+                    } catch (e) {
+                        console.error("Errore durante la rimozione dello studente:", e);
                     }
-
-                    await db.collection("students").doc(studentId).delete();
-                    console.log("Studente rimosso dalla collezione 'students'");
-
-                    await db.collection("totalStats").doc(studentName).delete();
-                    console.log("Statistica rimossa dalla collezione 'totalStats'");
-
-                    const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
-                    await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-                    console.log("Attendance aggiornata per la data selezionata");
-
-                    setStudents(prev => prev.filter(student => student.id !== studentId));
-                    setDailyAttendance(prev => ({
-                        ...prev,
-                        [selectedDate]: updatedAttendance
-                    }));
-                    setTotalStats(prev => {
-                        const updatedStats = { ...prev };
-                        delete updatedStats[studentName];
-                        return updatedStats;
-                    });
-
-                    console.log("Rimozione completata:", studentName);
-                } catch (e) {
-                    console.error("Errore durante la rimozione dello studente:", e);
                 }
             };
 
@@ -248,14 +244,14 @@
                     </div>
 
                     <div className="bg-white rounded-lg shadow mb-6">
-                        {currentDayAttendance.map((student, index) => (
+                        {students.map((student, index) => (
                             <div key={index} className="flex items-center justify-between p-3 border-b">
                                 <span>{student.name}</span>
                                 <button
                                     onClick={() => toggleAttendance(student.name)}
-                                    className={`px-3 py-1 rounded ${student.present ? 'bg-green-600 text-white' : student.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
+                                    className={`px-3 py-1 rounded ${currentDayAttendance.find(s => s.name === student.name)?.present ? 'bg-green-600 text-white' : 'bg-gray-200'}`}
                                 >
-                                    {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
+                                    {currentDayAttendance.find(s => s.name === student.name)?.present === true ? "Presente" : "Non definito"}
                                 </button>
                                 <button
                                     onClick={() => removeStudent(student.id, student.name)}
@@ -303,4 +299,3 @@
     </script>
 </body>
 </html>
-
