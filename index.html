@@ -129,22 +129,34 @@
                 }
             };
 
-            const updateTotalStats = async (studentName, newStatus, previousStatus) => {
+            const updateTotalStats = async (studentName, status) => {
+                const docRef = db.collection("attendance").doc(selectedDate);
+                const docSnap = await docRef.get();
+            
+                if (docSnap.exists) {
+                    const attendanceData = docSnap.data().students || [];
+                    const existingRecord = attendanceData.find(att => att.name === studentName);
+            
+                    // Se lo stato attuale per la giornata è uguale a quello che stiamo per impostare, non aggiornare
+                    if (existingRecord && existingRecord.present === status) {
+                        return;
+                    }
+                }
+            
                 const currentStats = totalStats[studentName] || { presenze: 0, assenze: 0 };
                 const newStats = { ...currentStats };
             
-                // Aggiorna le statistiche solo se c'è un cambiamento nello stato
-                if (previousStatus === true && newStatus === false) {
-                    newStats.presenze -= 1;
-                    newStats.assenze += 1;
-                } else if (previousStatus === false && newStatus === true) {
-                    newStats.assenze -= 1;
+                if (status === true) {
                     newStats.presenze += 1;
-                } else if (previousStatus === null && newStatus !== null) {
-                    if (newStatus === true) {
-                        newStats.presenze += 1;
-                    } else if (newStatus === false) {
-                        newStats.assenze += 1;
+                    if (currentStats.assenze > 0) newStats.assenze -= 1;
+                } else if (status === false) {
+                    newStats.assenze += 1;
+                    if (currentStats.presenze > 0) newStats.presenze -= 1;
+                } else if (status === null) {
+                    // Quando lo stato diventa "Non definito", decrementa le presenze o le assenze in base al valore precedente
+                    if (existingRecord) {
+                        if (existingRecord.present === true) newStats.presenze -= 1;
+                        else if (existingRecord.present === false) newStats.assenze -= 1;
                     }
                 }
             
@@ -155,6 +167,7 @@
             
                 await db.collection("totalStats").doc(studentName).set(newStats);
             };
+
             
             const toggleAttendance = async (studentName) => {
                 setDailyAttendance(prev => {
