@@ -37,7 +37,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
 
     <script type="text/babel">
-        // Configurazione di Firebase
         const firebaseConfig = {
           apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
           authDomain: "registro-giococoro.firebaseapp.com",
@@ -47,7 +46,6 @@
           appId: "1:816758508935:web:81f9c5de9f2cafb5f31722"
         };
 
-        // Inizializza Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
@@ -59,10 +57,11 @@
             const [showStats, setShowStats] = useState(false);
             const [students, setStudents] = useState([]);
             const [dailyAttendance, setDailyAttendance] = useState({});
-            const [studentStats, setStudentStats] = useState({});
+            const [totalStats, setTotalStats] = useState({});
 
             useEffect(() => {
                 fetchStudents();
+                fetchTotalStats();
             }, []);
 
             useEffect(() => {
@@ -71,14 +70,19 @@
                 }
             }, [selectedDate, students]);
 
-            useEffect(() => {
-                calculateStats();
-            }, [dailyAttendance]);
-
             const fetchStudents = async () => {
                 const querySnapshot = await db.collection("students").get();
                 const studentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setStudents(studentsList);
+            };
+
+            const fetchTotalStats = async () => {
+                const statsSnapshot = await db.collection("totalStats").get();
+                const stats = {};
+                statsSnapshot.forEach(doc => {
+                    stats[doc.id] = doc.data();
+                });
+                setTotalStats(stats);
             };
 
             const fetchDailyAttendance = async () => {
@@ -91,10 +95,12 @@
                         const existingRecord = attendanceData.find(att => att.name === student.name);
                         return existingRecord ? existingRecord : { name: student.name, present: null };
                     });
+                    
                     setDailyAttendance(prev => ({
                         ...prev,
                         [selectedDate]: updatedAttendance
                     }));
+
                     if (JSON.stringify(updatedAttendance) !== JSON.stringify(attendanceData)) {
                         await docRef.set({ students: updatedAttendance });
                     }
@@ -106,23 +112,6 @@
                     }));
                     await docRef.set({ students: defaultAttendance });
                 }
-            };
-
-            const calculateStats = () => {
-                const stats = {};
-                Object.values(dailyAttendance).forEach(day => {
-                    day.forEach(student => {
-                        if (!stats[student.name]) {
-                            stats[student.name] = { present: 0, absent: 0 };
-                        }
-                        if (student.present === true) {
-                            stats[student.name].present += 1;
-                        } else if (student.present === false) {
-                            stats[student.name].absent += 1;
-                        }
-                    });
-                });
-                setStudentStats(stats);
             };
 
             const handleAddStudent = async () => {
@@ -140,19 +129,34 @@
                 }
             };
 
+            const updateTotalStats = async (studentName, status) => {
+                const currentStats = totalStats[studentName] || { presenze: 0, assenze: 0 };
+                const newStats = { ...currentStats };
+
+                if (status === true) newStats.presenze += 1;
+                else if (status === false) newStats.assenze += 1;
+
+                setTotalStats(prev => ({
+                    ...prev,
+                    [studentName]: newStats
+                }));
+
+                await db.collection("totalStats").doc(studentName).set(newStats);
+            };
+
             const toggleAttendance = (studentName) => {
                 setDailyAttendance(prev => {
-                    const updatedAttendance = prev[selectedDate].map(student => 
-                        student.name === studentName
-                            ? { 
-                                ...student, 
-                                present: student.present === null ? true 
-                                         : student.present === true ? false 
-                                         : null
-                            }
-                            : student
-                    );
+                    const updatedAttendance = prev[selectedDate].map(student => {
+                        if (student.name === studentName) {
+                            const newStatus = student.present === null ? true : student.present === true ? false : null;
+                            if (newStatus !== null) updateTotalStats(studentName, newStatus);
+                            return { ...student, present: newStatus };
+                        }
+                        return student;
+                    });
+                    
                     db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+            
                     return {
                         ...prev,
                         [selectedDate]: updatedAttendance
@@ -213,8 +217,8 @@
                                         {students.map((student, index) => (
                                             <tr key={index} className="border-t">
                                                 <td className="p-2">{student.name}</td>
-                                                <td className="text-center p-2">{studentStats[student.name]?.present || 0}</td>
-                                                <td className="text-center p-2">{studentStats[student.name]?.absent || 0}</td>
+                                                <td className="text-center p-2">{totalStats[student.name]?.presenze || 0}</td>
+                                                <td className="text-center p-2">{totalStats[student.name]?.assenze || 0}</td>
                                             </tr>
                                         ))}
                                     </tbody>
