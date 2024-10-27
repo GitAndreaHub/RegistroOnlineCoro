@@ -176,31 +176,46 @@
 
             const removeStudent = async (studentId, studentName) => {
                 try {
-                    // Rimuovi lo studente dal database
+                    console.log("Inizio rimozione dello studente:", studentName);
+            
+                    // Rimuovi dal database
                     await db.collection("students").doc(studentId).delete();
+                    console.log("Studente rimosso dalla collezione 'students' su Firebase");
+            
                     await db.collection("totalStats").doc(studentName).delete();
-                    
-                    // Rimuovi lo studente anche dalla raccolta di presenze giornaliere
+                    console.log("Statistiche rimosse dalla collezione 'totalStats' su Firebase");
+            
+                    // Rimuovi anche dall'attendance giornaliera
                     const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
                     await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-                    
-                    // Una volta completata l’eliminazione su Firebase, aggiorna lo stato locale
-                    setStudents(prev => prev.filter(student => student.id !== studentId));
-                    setDailyAttendance(prev => ({
-                        ...prev,
-                        [selectedDate]: updatedAttendance
-                    }));
-                    
-                    // Aggiorna le statistiche totali locali
+                    console.log("Presenze aggiornate nella collezione 'attendance' su Firebase");
+            
+                    // Aggiorna la lista degli studenti
+                    setStudents(prev => {
+                        const newStudents = prev.filter(student => student.id !== studentId);
+                        console.log("Aggiornato lo stato 'students' locale:", newStudents);
+                        return newStudents;
+                    });
+            
+                    setDailyAttendance(prev => {
+                        const newDailyAttendance = { ...prev, [selectedDate]: updatedAttendance };
+                        console.log("Aggiornato lo stato 'dailyAttendance' locale:", newDailyAttendance);
+                        return newDailyAttendance;
+                    });
+            
                     setTotalStats(prev => {
                         const updatedStats = { ...prev };
                         delete updatedStats[studentName];
+                        console.log("Aggiornato lo stato 'totalStats' locale:", updatedStats);
                         return updatedStats;
                     });
+            
+                    console.log("Rimozione dello studente completata per:", studentName);
                 } catch (e) {
-                    console.error("Errore durante la rimozione dello studente: ", e);
+                    console.error("Errore durante la rimozione dello studente:", e);
                 }
             };
+
 
 
 
