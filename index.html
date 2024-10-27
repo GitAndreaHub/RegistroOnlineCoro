@@ -58,24 +58,27 @@
             fetchStudents();
             fetchDailyAttendance();
         }, []);
-    
+        
         // Nuovo useEffect per garantire che `dailyAttendance[selectedDate]` sia sempre definito come array
         useEffect(() => {
-            if (!dailyAttendance[selectedDate]) {
+            // Controllo che `dailyAttendance`, `selectedDate` e `students` non siano null o undefined
+            if (dailyAttendance && selectedDate && students && !dailyAttendance[selectedDate]) {
                 const newDayAttendance = students.length > 0 
                     ? students.map(student => ({ name: student.name, present: null })) 
                     : [];
+                
                 setDailyAttendance(prev => ({
                     ...prev,
                     [selectedDate]: newDayAttendance
                 }));
-    
+        
                 // Salva la nuova giornata su Firebase
                 db.collection("attendance").doc(selectedDate).set({
                     students: newDayAttendance
                 });
             }
-        }, [selectedDate, students]);
+        }, [selectedDate, students, dailyAttendance]);
+
 
         const AttendanceTracker = () => {
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
