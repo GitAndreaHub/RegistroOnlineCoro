@@ -169,7 +169,8 @@
                         if (student.name === studentName) {
                             const previousStatus = student.present;
                             const newStatus = student.present === null ? true : student.present === true ? false : null;
-                            return { ...student, present: newStatus };
+                            student.present = newStatus;
+                            updateTotalStats(studentName, newStatus, previousStatus);
                         }
                         return student;
                     });
@@ -181,6 +182,30 @@
                         [selectedDate]: updatedAttendance
                     };
                 });
+            };
+
+            const updateTotalStats = async (studentName, newStatus, previousStatus) => {
+                const currentStats = totalStats[studentName] || { presenze: 0, assenze: 0 };
+                const newStats = { ...currentStats };
+            
+                if (previousStatus === true) {
+                    newStats.presenze -= 1;
+                } else if (previousStatus === false) {
+                    newStats.assenze -= 1;
+                }
+            
+                if (newStatus === true) {
+                    newStats.presenze += 1;
+                } else if (newStatus === false) {
+                    newStats.assenze += 1;
+                }
+            
+                setTotalStats(prev => ({
+                    ...prev,
+                    [studentName]: newStats
+                }));
+            
+                await db.collection("totalStats").doc(studentName).set(newStats);
             };
 
             const toggleStats = () => setShowStats(!showStats);
@@ -220,9 +245,9 @@
                                 <span>{student.name}</span>
                                 <button
                                     onClick={() => toggleAttendance(student.name)}
-                                    className={`px-3 py-1 rounded ${student.present ? 'bg-green-600 text-white' : student.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
+                                    className={`px-3 py-1 rounded ${dailyAttendance[selectedDate]?.find(s => s.name === student.name)?.present ? 'bg-green-600 text-white' : dailyAttendance[selectedDate]?.find(s => s.name === student.name)?.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
                                 >
-                                    {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
+                                    {dailyAttendance[selectedDate]?.find(s => s.name === student.name)?.present === true ? "Presente" : dailyAttendance[selectedDate]?.find(s => s.name === student.name)?.present === false ? "Assente" : "Non definito"}
                                 </button>
                                 <button
                                     onClick={() => {
