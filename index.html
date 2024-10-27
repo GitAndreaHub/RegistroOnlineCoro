@@ -38,7 +38,7 @@
 
     <script type="text/babel">
         const firebaseConfig = {
-          apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
+          apiKey: "API_KEY",
           authDomain: "registro-giococoro.firebaseapp.com",
           projectId: "registro-giococoro",
           storageBucket: "registro-giococoro.appspot.com",
@@ -136,20 +136,16 @@
                     return;
                 }
                 try {
-                    // Rimuovi dal database
                     await db.collection("students").doc(studentId).delete();
                     console.log("Studente rimosso dalla collezione 'students'");
 
-                    // Rimuovi le statistiche totali
                     await db.collection("totalStats").doc(studentName).delete();
                     console.log("Statistica rimossa dalla collezione 'totalStats'");
 
-                    // Aggiorna la presenza giornaliera
                     const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
                     await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
                     console.log("Attendance aggiornata per la data selezionata");
 
-                    // Aggiorna lo stato in React
                     setStudents(prev => prev.filter(student => student.id !== studentId));
                     setDailyAttendance(prev => ({
                         ...prev,
@@ -234,9 +230,10 @@
                                             removeStudent(student.id, student.name);
                                         }
                                     }}
-                                    className="px-3 py-1 bg-red-500 text-white rounded"
+                                    className="text-red-500 font-bold text-xl px-2 hover:bg-gray-200 rounded-full"
+                                    aria-label="Rimuovi studente"
                                 >
-                                    Rimuovi
+                                    &times;
                                 </button>
                             </div>
                         ))}
