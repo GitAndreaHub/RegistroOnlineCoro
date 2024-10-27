@@ -38,12 +38,12 @@
 
     <script type="text/babel">
         const firebaseConfig = {
-          apiKey: "AIzaSyDxr1OP0ukeHmc9sCXipKX2o2IGS-RU550",
-          authDomain: "registro-giococoro.firebaseapp.com",
-          projectId: "registro-giococoro",
-          storageBucket: "registro-giococoro.appspot.com",
-          messagingSenderId: "816758508935",
-          appId: "1:816758508935:web:81f9c5de9f2cafb5f31722"
+          apiKey: "YOUR_API_KEY",
+          authDomain: "YOUR_AUTH_DOMAIN",
+          projectId: "YOUR_PROJECT_ID",
+          storageBucket: "YOUR_STORAGE_BUCKET",
+          messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+          appId: "YOUR_APP_ID"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -176,9 +176,18 @@
 
             const removeStudent = async (studentId, studentName) => {
                 try {
+                    // Rimuovi dal database
                     await db.collection("students").doc(studentId).delete();
                     await db.collection("totalStats").doc(studentName).delete();
 
+                    // Rimuovi anche dall'attendance giornaliera
+                    setDailyAttendance(prev => {
+                        const updatedAttendance = prev[selectedDate].filter(student => student.name !== studentName);
+                        db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+                        return { ...prev, [selectedDate]: updatedAttendance };
+                    });
+
+                    // Aggiorna la lista degli studenti
                     setStudents(prev => prev.filter(student => student.id !== studentId));
                     setTotalStats(prev => {
                         const updatedStats = { ...prev };
@@ -214,20 +223,18 @@
                         {currentDayAttendance.map((student, index) => (
                             <div key={index} className="flex items-center justify-between p-3 border-b">
                                 <span>{student.name}</span>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => toggleAttendance(student.name)}
-                                        className={`px-3 py-1 rounded ${student.present ? 'bg-green-600 text-white' : student.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
-                                    >
-                                        {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
-                                    </button>
-                                    <button
-                                        onClick={() => removeStudent(student.id, student.name)}
-                                        className="px-3 py-1 bg-red-500 text-white rounded"
-                                    >
-                                        Rimuovi
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => toggleAttendance(student.name)}
+                                    className={`px-3 py-1 rounded ${student.present ? 'bg-green-600 text-white' : student.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
+                                >
+                                    {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
+                                </button>
+                                <button
+                                    onClick={() => removeStudent(student.id, student.name)}
+                                    className="px-3 py-1 bg-red-500 text-white rounded"
+                                >
+                                    Rimuovi
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -268,3 +275,4 @@
     </script>
 </body>
 </html>
+
