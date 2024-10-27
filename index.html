@@ -129,28 +129,42 @@
                 }
             };
 
-            const updateTotalStats = async (studentName, newStatus, previousStatus) => {
-                const currentStats = totalStats[studentName] || { presenze: 0, assenze: 0 };
-                const newStats = { ...currentStats };
-            
-                if (previousStatus === true) {
-                    newStats.presenze -= 1;
-                } else if (previousStatus === false) {
-                    newStats.assenze -= 1;
+            const removeStudent = async (studentId, studentName) => {
+                console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
+                if (!studentId) {
+                    console.error("ID dello studente non trovato. Impossibile procedere con la rimozione.");
+                    return;
                 }
-            
-                if (newStatus === true) {
-                    newStats.presenze += 1;
-                } else if (newStatus === false) {
-                    newStats.assenze += 1;
+                try {
+                    // Rimuovi dal database
+                    await db.collection("students").doc(studentId).delete();
+                    console.log("Studente rimosso dalla collezione 'students'");
+
+                    // Rimuovi le statistiche totali
+                    await db.collection("totalStats").doc(studentName).delete();
+                    console.log("Statistica rimossa dalla collezione 'totalStats'");
+
+                    // Aggiorna la presenza giornaliera
+                    const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
+                    await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
+                    console.log("Attendance aggiornata per la data selezionata");
+
+                    // Aggiorna lo stato in React
+                    setStudents(prev => prev.filter(student => student.id !== studentId));
+                    setDailyAttendance(prev => ({
+                        ...prev,
+                        [selectedDate]: updatedAttendance
+                    }));
+                    setTotalStats(prev => {
+                        const updatedStats = { ...prev };
+                        delete updatedStats[studentName];
+                        return updatedStats;
+                    });
+
+                    console.log("Rimozione completata:", studentName);
+                } catch (e) {
+                    console.error("Errore durante la rimozione dello studente:", e);
                 }
-            
-                setTotalStats(prev => ({
-                    ...prev,
-                    [studentName]: newStats
-                }));
-            
-                await db.collection("totalStats").doc(studentName).set(newStats);
             };
 
             const toggleAttendance = (studentName) => {
@@ -159,7 +173,6 @@
                         if (student.name === studentName) {
                             const previousStatus = student.present;
                             const newStatus = student.present === null ? true : student.present === true ? false : null;
-                            updateTotalStats(student.name, newStatus, previousStatus);
                             return { ...student, present: newStatus };
                         }
                         return student;
@@ -172,42 +185,6 @@
                         [selectedDate]: updatedAttendance
                     };
                 });
-            };
-
-            const removeStudent = async (studentId, studentName) => {
-                if (!studentId) {
-                    console.error("ID studente undefined. Annullamento rimozione.");
-                    return;
-                }
-                if (window.confirm(`Sei sicuro di voler rimuovere lo studente ${studentName}?`)) {
-                    console.log(`Inizio rimozione student ID: ${studentId}, Nome: ${studentName}`);
-                    try {
-                        await db.collection("students").doc(studentId).delete();
-                        console.log("Studente rimosso dalla collezione 'students'");
-
-                        await db.collection("totalStats").doc(studentName).delete();
-                        console.log("Statistica rimossa dalla collezione 'totalStats'");
-
-                        const updatedAttendance = (dailyAttendance[selectedDate] || []).filter(student => student.name !== studentName);
-                        await db.collection("attendance").doc(selectedDate).set({ students: updatedAttendance });
-                        console.log("Attendance aggiornata per la data selezionata");
-
-                        setStudents(prev => prev.filter(student => student.id !== studentId));
-                        setDailyAttendance(prev => ({
-                            ...prev,
-                            [selectedDate]: updatedAttendance
-                        }));
-                        setTotalStats(prev => {
-                            const updatedStats = { ...prev };
-                            delete updatedStats[studentName];
-                            return updatedStats;
-                        });
-
-                        console.log("Rimozione completata:", studentName);
-                    } catch (e) {
-                        console.error("Errore durante la rimozione dello studente:", e);
-                    }
-                }
             };
 
             const toggleStats = () => setShowStats(!showStats);
@@ -223,7 +200,6 @@
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
                         className="w-full p-2 border rounded mb-4"
-                        id="selectedDate" 
                     />
                     <div className="flex gap-2 mb-4">
                         <input
@@ -232,7 +208,6 @@
                             value={newStudent}
                             onChange={(e) => setNewStudent(e.target.value)}
                             className="flex-1 p-2 border rounded"
-                            id="newStudent" 
                         />
                         <button onClick={handleAddStudent} className="px-4 py-2 text-white rounded" style={{ backgroundColor: '#E6007E' }}>Aggiungi</button>
                     </div>
@@ -249,12 +224,16 @@
                                 <span>{student.name}</span>
                                 <button
                                     onClick={() => toggleAttendance(student.name)}
-                                    className={`px-3 py-1 rounded ${currentDayAttendance.find(s => s.name === student.name)?.present ? 'bg-green-600 text-white' : 'bg-gray-200'}`}
+                                    className={`px-3 py-1 rounded ${student.present ? 'bg-green-600 text-white' : student.present === false ? 'bg-red-600 text-white' : 'bg-gray-200'}`}
                                 >
-                                    {currentDayAttendance.find(s => s.name === student.name)?.present === true ? "Presente" : "Non definito"}
+                                    {student.present === true ? "Presente" : student.present === false ? "Assente" : "Non definito"}
                                 </button>
                                 <button
-                                    onClick={() => removeStudent(student.id, student.name)}
+                                    onClick={() => {
+                                        if (window.confirm(`Sei sicuro di voler rimuovere ${student.name}?`)) {
+                                            removeStudent(student.id, student.name);
+                                        }
+                                    }}
                                     className="px-3 py-1 bg-red-500 text-white rounded"
                                 >
                                     Rimuovi
@@ -299,3 +278,4 @@
     </script>
 </body>
 </html>
+
